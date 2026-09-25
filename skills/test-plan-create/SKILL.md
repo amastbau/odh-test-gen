@@ -47,7 +47,9 @@ directory name from the feature name.
 
 Install the test-plan package so all scripts are importable from any directory:
 ```bash
-(cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && uv sync --extra dev)
+bash "${CLAUDE_SKILL_DIR}/../../scripts/bootstrap.sh" --layout "${CLAUDE_SKILL_DIR}" || exit 1
+repo_root=$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)
+(cd "$repo_root" && uv sync --extra dev)
 ```
 
 If installation fails, inform the user and **STOP**; do not proceed.
@@ -57,7 +59,7 @@ If installation fails, inform the user and **STOP**; do not proceed.
 Verify that `JIRA_URL`, `JIRA_USER`, and `JIRA_TOKEN` are configured:
 
 ```bash
-(cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && uv run python -c "from scripts.jira_utils import require_env; [require_env(v) for v in ('JIRA_URL','JIRA_USER','JIRA_TOKEN')]")
+(cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && uv run python -c "from scripts.jira_utils import require_env; [require_env(v) for v in ('JIRA_URL','JIRA_USER','JIRA_TOKEN')]")
 ```
 
 If it exits non-zero, **STOP immediately**. Do not continue or use alternative sources (MCP, cache,
@@ -67,23 +69,34 @@ web, or any workaround). Report the error and tell the user to set the missing v
 #### 0.3 Determine Output Directory
 
 Keep test plan artifacts outside the skill repository. If `--output-dir` is present, use it as a
-contributor override, set `FORCE_OUTPUT_DIR=true`, and skip validation. Otherwise read the saved
+contributor override and set `FORCE_OUTPUT_DIR=true`. Otherwise read the saved
 preference from `.claude/settings.json`, ask for a path with AskUserQuestion (empty uses the saved
 path or `~/Code/opendatahub-test-plans/plans/`), and expand `~`.
 
-Unless `FORCE_OUTPUT_DIR=true`, validate the target against the skill repository:
+Resolve a relative selection against the caller workspace before running a helper from the
+plugin directory:
+
 ```bash
-export CLAUDE_SKILL_DIR
+target_dir=$(python3 -c 'import os,sys; print(os.path.abspath(os.path.expanduser(sys.argv[1])))' "$target_dir")
+```
+
+Validate every target. The contributor override never permits package writes or, in Fullsend,
+output outside `FULLSEND_TARGET_REPO_DIR`:
+```bash
+if [ -n "${FULLSEND_TARGET_REPO_DIR:-}" ]; then
+    FULLSEND_TARGET_REPO_DIR=$(cd "$FULLSEND_TARGET_REPO_DIR" && pwd -P) || exit 1
+    export FULLSEND_TARGET_REPO_DIR
+fi
 force_flag=$([ "$FORCE_OUTPUT_DIR" = "true" ] && echo "--force" || echo "")
-(cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && uv run python scripts/repo.py validate-local-path "$target_dir" $force_flag) || exit 1
+(cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && uv run python scripts/repo.py validate-local-path "$target_dir" $force_flag) || exit 1
 ```
 
 Unless `--output-dir` was used, ask whether to save the path. On yes, atomically update only
 `test-plan.output_dir` in `.claude/settings.json`, preserving other settings; on no, do not save.
-Then create and enter the output directory:
+Create the output directory, but remain in the caller workspace through Step 1 so the
+guarded `.odh-test-gen/` helper link resolves from that workspace:
 ```bash
 mkdir -p "$target_dir"
-cd "$target_dir"
 echo "✓ Creating test plan artifacts in: $target_dir"
 ```
 
@@ -96,9 +109,13 @@ echo "✓ Creating test plan artifacts in: $target_dir"
 
    **Fetching from Jira:**
    ```bash
-   repo_root=$(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel)
-   tmp_result=$(cd "$repo_root" && uv run python scripts/parse_strat.py new-strat-tmp) || exit 1
-   strategy_file=$(echo "$tmp_result" | jq -r '.strategy_file')
+   repo_root=$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)
+   parse_strat_script="$repo_root/scripts/parse_strat.py"
+   if [ "$(pwd -P)" != "$repo_root" ]; then
+       parse_strat_script=".odh-test-gen/scripts/parse_strat.py"
+   fi
+   tmp_result=$(uv run --project "$repo_root" python "$parse_strat_script" new-strat-tmp) || exit 1
+   strategy_file=$(printf '%s\n' "$tmp_result" | jq -r '.strategy_file')
    (cd "$repo_root" && \
     uv run python scripts/fetch_issue.py <JIRA_KEY> --output "$strategy_file")
    ```
@@ -109,19 +126,25 @@ echo "✓ Creating test plan artifacts in: $target_dir"
 
    **Auto-detected from `artifacts/strat-tasks/<JIRA_KEY>.md`** (shared cache; also a Jira-outage fallback for other skills):
    ```bash
-   resolve_result=$(cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && uv run python scripts/parse_strat.py resolve-local "<JIRA_KEY>") || exit 1
-   strategy_file=$(echo "$resolve_result" | jq -r '.strategy_file')
+   resolve_result=$(cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && uv run python scripts/parse_strat.py resolve-local "<JIRA_KEY>") || exit 1
+   strategy_file=$(printf '%s\n' "$resolve_result" | jq -r '.strategy_file')
    ```
 
    - `components` is extracted deterministically in Step 1.5 (`parse_strat.py save-snapshot`).
 2. **ADR** (if provided): Read the ADR file for additional technical detail (API endpoints, data models, implementation specifics).
+
+After the strategy has been acquired, enter the output directory before creating feature artifacts:
+
+```bash
+cd "$target_dir" || exit 1
+```
 
 ### Step 1.5: Parse Strategy Sections and Snapshot the Strategy
 
 Run the STRAT parser on the fetched strategy before snapshotting it:
 
 ```bash
-repo_root=$(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel)
+repo_root=$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)
 gate_result=$(cd "$repo_root" && uv run python scripts/parse_strat.py workflow-inputs "$strategy_file")
 gate_exit=$?
 
@@ -131,14 +154,14 @@ if [ "$gate_exit" -ne 0 ]; then
   exit 1
 fi
 
-gate_status=$(echo "$gate_result" | jq -r '.status')
+gate_status=$(printf '%s\n' "$gate_result" | jq -r '.status')
 if [ "$gate_status" = "ok" ]; then
-  ac_json=$(echo "$gate_result" | jq -c '.ac_json')
-  nfr_json=$(echo "$gate_result" | jq -c 'if .nfr_json.found then .nfr_json else empty end')
-  oos_json=$(echo "$gate_result" | jq -c 'if .oos_json.found then .oos_json else empty end')
-  ac_count=$(echo "$gate_result" | jq -r '.ac_count')
+  ac_json=$(printf '%s\n' "$gate_result" | jq -c '.ac_json')
+  nfr_json=$(printf '%s\n' "$gate_result" | jq -c 'if .nfr_json.found then .nfr_json else empty end')
+  oos_json=$(printf '%s\n' "$gate_result" | jq -c 'if .oos_json.found then .oos_json else empty end')
+  ac_count=$(printf '%s\n' "$gate_result" | jq -r '.ac_count')
   nfr_category_flags=()
-  while IFS= read -r cat; do [ -n "$cat" ] && nfr_category_flags+=(--nfr-category "$cat"); done < <(echo "$gate_result" | jq -r '.nfr_categories[]? // empty')
+  while IFS= read -r cat; do [ -n "$cat" ] && nfr_category_flags+=(--nfr-category "$cat"); done < <(printf '%s\n' "$gate_result" | jq -r '.nfr_categories[]? // empty')
 fi
 
 feature_name="<user-provided feature directory name from Inputs (Optional) if given, else snake_case derived from the strategy title>"
@@ -151,14 +174,14 @@ copy (never delete) the shared cache:
 
 ```bash
 snapshot_result=$(cd "$repo_root" && uv run python scripts/parse_strat.py save-snapshot "$strategy_file" "$feature_dir") || exit 1
-strategy_file=$(echo "$snapshot_result" | jq -r '.strategy_file')
-components=$(echo "$snapshot_result" | jq -r '.components | join(",")')
+strategy_file=$(printf '%s\n' "$snapshot_result" | jq -r '.strategy_file')
+components=$(printf '%s\n' "$snapshot_result" | jq -r '.components | join(",")')
 ```
 
 If `$gate_status` is `no_acceptance_criteria` (no ACs or count 0), **STOP**:
 1. Write a lowest-score review:
    ```bash
-   (cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && uv run python scripts/frontmatter.py set \
+   (cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && uv run python scripts/frontmatter.py set \
        <absolute_path_to_output_dir>/<feature_name>/TestPlanReview.md \
        feature="<feature_name>" source_key=<JIRA_KEY> score=0 pass=false verdict=Rework \
        scores='{"specificity":0,"grounding":0,"scope_fidelity":0,"actionability":0,"consistency":0}' \
@@ -238,7 +261,7 @@ Run Python from the test-plan repo (where `pyproject.toml` is), not the output d
 absolute paths.
 
 ```bash
-(cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && uv run python scripts/frontmatter.py set <absolute_path_to_output_dir>/<feature_name>/TestPlan.md \
+(cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && uv run python scripts/frontmatter.py set <absolute_path_to_output_dir>/<feature_name>/TestPlan.md \
     feature="<feature_name>" \
     source_key=<JIRA_KEY> \
     source_type=$SOURCE_TYPE \
@@ -246,7 +269,7 @@ absolute paths.
     author="<team_name>" \
     components="$components" \
     additional_docs="<comma-separated list of doc links, or []>")
-(cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && uv run python scripts/version.py set <absolute_path_to_output_dir>/<feature_name>/TestPlan.md 1.0.0)
+(cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && uv run python scripts/version.py set <absolute_path_to_output_dir>/<feature_name>/TestPlan.md 1.0.0)
 ```
 
 `components` comes from Step 1.5 (empty becomes `[]`); `additional_docs` contains the ADR and other
@@ -261,7 +284,7 @@ After frontmatter, run the deterministic checks below. Step 1.5 guarantees `$ac_
 ```bash
 testplan="<absolute_path_to_output_dir>/<feature_name>/TestPlan.md"
 feature_dir="<absolute_path_to_output_dir>/<feature_name>"
-repo_root=$(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel)
+repo_root=$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)
 
 team_list=$(cd "$repo_root" && uv run python scripts/get_component_test_dir.py --teams-only "$feature_dir") || {
     echo "ERROR: scripts/get_component_test_dir.py --teams-only failed — stopping." >&2
@@ -272,7 +295,7 @@ team_list=$(cd "$repo_root" && uv run python scripts/get_component_test_dir.py -
 (cd "$repo_root" && \
  scope_result=$(uv run python scripts/validate_test_scope.py "$testplan" \
      --include-teams="$team_list" --checks-dir=scripts/checks) && \
- (echo "$scope_result" | jq -e '.valid' >/dev/null || { echo "$scope_result" >&2; exit 1; }) && \
+ (printf '%s\n' "$scope_result" | jq -e '.valid' >/dev/null || { echo "$scope_result" >&2; exit 1; }) && \
  uv run python scripts/validate.py ac-citations "$testplan" --ac-count "$ac_count" "${nfr_category_flags[@]}" && \
  uv run python scripts/validate.py ac-coverage "$testplan" --ac-count "$ac_count" && \
  uv run python scripts/validate.py structure "$testplan" && \
@@ -286,8 +309,8 @@ citation_inputs=$(cd "$repo_root" && uv run python scripts/build_citation_inputs
     echo "$citation_inputs" >&2
     exit 1
 }
-actionability_result=$(echo "$citation_inputs" | jq -c '.actionability_result')
-echo "$citation_inputs" | jq -e '.scope_coverage_result.valid' >/dev/null || {
+actionability_result=$(printf '%s\n' "$citation_inputs" | jq -c '.actionability_result')
+printf '%s\n' "$citation_inputs" | jq -e '.scope_coverage_result.valid' >/dev/null || {
     echo "ERROR: scope coverage is incomplete; add `(Objective: #N)` markers and grounded objectives." >&2
     echo "$citation_inputs" >&2
     exit 1
@@ -305,7 +328,7 @@ Write each Step 2 sub-agent's full raw analysis verbatim to
 Then run:
 
 ```bash
-(cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && \
+(cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && \
  uv run python scripts/consolidate_gaps_and_stamp.py \
    --feature-name "<feature_name>" \
    --source-key <JIRA_KEY> \
@@ -341,7 +364,7 @@ is not reused:
 ```bash
 citation_inputs=$(cd "$repo_root" && uv run python scripts/build_citation_inputs.py "$feature_dir" \
   --strategy-file "$strategy_file") || { echo "$citation_inputs"; exit 1; }
-actionability_result=$(echo "$citation_inputs" | jq -c '.actionability_result')
+actionability_result=$(printf '%s\n' "$citation_inputs" | jq -c '.actionability_result')
 ```
 Rerun the same `consolidate_gaps_and_stamp.py` command (including `--skip-cleanup`) with fresh
 `actionability_result`, then follow the new `next`. **If option 2:** proceed to Step 3.6; **option 3**
@@ -353,12 +376,12 @@ Add `test-plan-auto-created` to the source Jira issue to mark the generated plan
 
 Read `source_key` from `<feature_name>/TestPlan.md` frontmatter before stamping:
 ```bash
-source_key=$(cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && uv run python scripts/frontmatter.py read <absolute_path_to_output_dir>/<feature_name>/TestPlan.md source_key)
+source_key=$(cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && uv run python scripts/frontmatter.py read <absolute_path_to_output_dir>/<feature_name>/TestPlan.md source_key)
 ```
 
 Then add the label with `add_jira_labels.py`:
 ```bash
-(cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && \
+(cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && \
  uv run python scripts/add_jira_labels.py "$source_key" test-plan-auto-created)
 ```
 
@@ -374,10 +397,10 @@ gaps or introduced new advisories). Recompute `actionability_result` from the fi
 and rerun `consolidate_gaps_and_stamp.py` with the same flags used in Step 3.5:
 
 ```bash
-repo_root=$(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel)
+repo_root=$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)
 citation_inputs=$(cd "$repo_root" && uv run python scripts/build_citation_inputs.py <feature_dir> \
   --strategy-file "$strategy_file") || { echo "$citation_inputs"; exit 1; }
-actionability_result=$(echo "$citation_inputs" | jq -c '.actionability_result')
+actionability_result=$(printf '%s\n' "$citation_inputs" | jq -c '.actionability_result')
 
 (cd "$repo_root" && \
  uv run python scripts/consolidate_gaps_and_stamp.py \
@@ -426,7 +449,7 @@ For any other verdict, warn and skip. If `auto_revised=true`, also add
 `test-plan-auto-revised`.
 
 ```bash
-repo_root=$(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel)
+repo_root=$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)
 source_key=$(cd "$repo_root" && \
     uv run python scripts/frontmatter.py read <absolute_path_to_output_dir>/<feature_name>/TestPlan.md source_key)
 verdict=$(cd "$repo_root" && \
@@ -435,10 +458,10 @@ auto_revised=$(cd "$repo_root" && \
     uv run python scripts/frontmatter.py read <absolute_path_to_output_dir>/<feature_name>/TestPlanReview.md auto_revised)
 
 if [ "$auto_revised" = "true" ]; then
-    (cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && \
+    (cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && \
      uv run python scripts/add_jira_labels.py "$source_key" --verdict "$verdict" test-plan-auto-revised)
 else
-    (cd $(git -C ${CLAUDE_SKILL_DIR} rev-parse --show-toplevel) && \
+    (cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && \
      uv run python scripts/add_jira_labels.py "$source_key" --verdict "$verdict")
 fi
 ```

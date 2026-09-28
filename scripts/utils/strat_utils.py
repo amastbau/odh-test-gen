@@ -11,7 +11,7 @@ _ADDITIONAL_AC_HEADING_RE = re.compile(
     r"^h[23]\.\s+(?:\*Acceptance Criteria\*|Acceptance Criteria)(?:\s*\([^)]*\))?\s*$", re.IGNORECASE
 )
 _STRATEGY_AC_HEADING_RE = re.compile(r"^h[23]\.\s+Strategy Acceptance Criteria\s*$", re.IGNORECASE)
-_BOLD_SECTION_HEADING_RE = re.compile(r"^\*[^*].*\*\s*$")
+_BOLD_SECTION_HEADING_RE = re.compile(r"^\*[^*\s][^*]*\*\s*:?[\t ]*$")
 _COLOR_SECTION_HEADING_RE = re.compile(r"^\{color:[^}]+\}.+\{color\}\s*$", re.IGNORECASE)
 
 

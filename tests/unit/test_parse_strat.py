@@ -139,9 +139,10 @@ class TestParseAcceptanceCriteria:
                 "h3. Feature\n\n"
                 "*Acceptance Criteria*\n\n"
                 "* A criterion written under a bold label\n\n"
+                "* A criterion ends with *bold text*\n\n"
                 "*Out of Scope*\n\n"
                 "* An excluded item\n",
-                ["A criterion written under a bold label"],
+                ["A criterion written under a bold label", "A criterion ends with *bold text*"],
                 id="exact-bold-label",
             ),
         ],

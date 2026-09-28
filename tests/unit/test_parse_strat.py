@@ -124,6 +124,26 @@ class TestParseAcceptanceCriteria:
                 [],
                 id="bold-done-label",
             ),
+            pytest.param(
+                "h2. *Acceptance Criteria*\n\n"
+                "h3. *Pipeline Execution*\n\n"
+                "* Pipeline runs with MLflow logging\n\n"
+                "h3. Strategy Acceptance Criteria\n\n"
+                "* Given a pipeline completes, then MLflow contains its metrics\n\n"
+                "h3. Effort Estimate\n\n"
+                "* Excluded effort detail\n",
+                ["Given a pipeline completes, then MLflow contains its metrics"],
+                id="bold-heading-and-strategy-ac",
+            ),
+            pytest.param(
+                "h3. Feature\n\n"
+                "*Acceptance Criteria*\n\n"
+                "* A criterion written under a bold label\n\n"
+                "*Out of Scope*\n\n"
+                "* An excluded item\n",
+                ["A criterion written under a bold label"],
+                id="exact-bold-label",
+            ),
         ],
     )
     def test_qualified_and_unsupported_headings(self, content, expected_texts):

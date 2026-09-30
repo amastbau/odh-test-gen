@@ -25,6 +25,9 @@ Examples:
 
 Prepare the caller workspace before running package helpers:
 
+**Command output:** Substitutions return stdout only; diagnostics remain visible on stderr. Proceed to parsing
+only when commands succeed; successful empty output is valid for an absent optional `--output-dir`.
+
 ```bash
 bash "${CLAUDE_SKILL_DIR}/../../scripts/bootstrap.sh" --layout "${CLAUDE_SKILL_DIR}" || exit 1
 ```
@@ -37,7 +40,10 @@ If `$ARGUMENTS` is non-empty, parse **after** Step 0.1. Consume `--output-dir` b
 
 ```bash
 OUTPUT_DIR=$(cd "$(cd "${CLAUDE_SKILL_DIR}/../.." && pwd -P)" && \
-  uv run python scripts/parse_skill_args.py --output-dir "$ARGUMENTS")
+  uv run python scripts/parse_skill_args.py --output-dir "$ARGUMENTS") || {
+    echo "ERROR: scripts/parse_skill_args.py failed — stopping." >&2
+    exit 1
+}
 FORCE_OUTPUT_DIR=false
 if [ -n "$OUTPUT_DIR" ]; then
     FORCE_OUTPUT_DIR=true

@@ -369,6 +369,57 @@ def _json_documents(output: str) -> list[dict]:
     return documents
 
 
+@pytest.mark.parametrize(
+    ("skill_name", "needle", "arguments"),
+    [
+        pytest.param(
+            "test-plan-create",
+            "scope_result=$(uv run python scripts/validate_test_scope.py",
+            None,
+            id="scope-validation-failure",
+        ),
+        pytest.param(
+            "test-plan-create-cases",
+            "scripts/parse_skill_args.py",
+            "--output-dir /tmp/partial-output mcp_catalog",
+            id="output-dir-parse-failure",
+        ),
+    ],
+)
+def test_documented_capture_failures_stop_execution(
+    tmp_path: Path, skill_name: str, needle: str, arguments: str | None
+) -> None:
+    skill_dir = REPO_ROOT / "skills" / skill_name
+    block = _find_shell_block(skill_dir / "SKILL.md", needle, skill_dir)
+    if skill_name == "test-plan-create":
+        # Let the later citation capture succeed if the scope guard is missing.
+        block = block.split("actionability_result=", 1)[0]
+
+    environment = {"PATH": os.environ.get("PATH", ""), "CLAUDE_SKILL_DIR": str(skill_dir)}
+    if arguments is not None:
+        environment["ARGUMENTS"] = arguments
+
+    uv_stub = """uv() {
+    case "$*" in
+        *get_component_test_dir.py*) printf 'team-a\\n' ;;
+        *validate_test_scope.py*|*parse_skill_args.py*) printf 'partial output\\n'; return 42 ;;
+        *build_citation_inputs.py*) printf '{}\\n' ;;
+        *) return 99 ;;
+    esac
+}
+"""
+    result = subprocess.run(
+        ["bash", "-c", f"{uv_stub}\n{block}\nprintf 'COMPLETED\\n'\n"],
+        cwd=tmp_path,
+        env=environment,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "COMPLETED" not in result.stdout
+
+
 def test_non_publishing_skill_shell_commands_do_not_discover_package_root_with_git() -> None:
     offenders = [
         f"{document.relative_to(REPO_ROOT)}: {match.group(0)}"

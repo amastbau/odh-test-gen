@@ -15,7 +15,7 @@ allowedTools:
 
 # Test Plan Generator
 
-Generate a complete test plan for a RHOAI feature based on a refined strategy, and optionally an ADR document for additional technical depth.
+Generate a RHOAI test plan from a refined strategy, with an optional ADR for technical depth.
 
 ## Usage
 
@@ -34,12 +34,14 @@ Parse `$ARGUMENTS` as:
 1. Required Jira key: a `RHAISTRAT-*` strategy or `RHOAIENG-*` issue.
 2. Optional local ADR path (Markdown, text, or PDF).
 
-With no arguments, use a strategy created in this session by `/strat.create` or `/strat.refine` and
-proceed to Step 1. If none is available, ask for the Jira key and optional local ADR path, ADR URL
-(metadata only; never fetched), and optional snake_case feature-directory name. If omitted, derive the
-directory name from the feature name.
+With no arguments, use this session's `/strat.create` or `/strat.refine` strategy and continue at
+Step 1. If none exists, ask for a Jira key, optional local ADR path, ADR URL (metadata only; never
+fetch), and optional snake_case directory name (default: feature name).
 
 ## Process
+
+**Command output:** Substitutions return stdout only; diagnostics remain visible on stderr. Proceed to parsing
+only when commands succeed; successful empty output is valid for an absent optional `--output-dir`.
 
 ### Step 0: Pre-flight Checks
 
@@ -215,8 +217,8 @@ paths, never inline; pass the Step 1.5 JSON extractions as ground truth and do n
 - **`test-plan.analyze.infra`**: Pass strategy and ADR. Produce environment, data, user,
   infrastructure, and tooling findings for Section 3.
 
-After all three return, merge their findings into the template and collect their `## Gaps` sections
-for Step 3.5. Do not add information absent from every sub-agent output.
+After all three return, merge their findings into the template and collect `## Gaps` for Step 3.5. Add
+no information absent from all three outputs.
 
 **Evidence policy:** Apply one occurrence-level rule independently to Sections 3.1–3.3: a bare or
 unresolved `TBD` is blocking; a genuinely unknown value is non-blocking only with an explicit resolution path
@@ -301,7 +303,10 @@ team_list=$(cd "$repo_root" && uv run python scripts/get_component_test_dir.py -
  uv run python scripts/validate.py structure "$testplan" && \
  uv run python scripts/validate.py category-prefixes "$testplan" && \
  uv run python scripts/validate.py interface-types "$testplan" && \
- uv run python scripts/validate.py infra-scope "$testplan")
+ uv run python scripts/validate.py infra-scope "$testplan") || {
+    echo "ERROR: test-plan validation failed — stopping." >&2
+    exit 1
+}
 
 citation_inputs=$(cd "$repo_root" && uv run python scripts/build_citation_inputs.py "$feature_dir" \
     --strategy-file "$strategy_file") || {
@@ -387,10 +392,10 @@ Then add the label with `add_jira_labels.py`:
 
 ### Step 4: Review, Score, and Improve
 
-After the gaps flow, invoke the internal **`test-plan.review`** skill with the feature directory. It
-applies the 10-point rubric (Specificity, Grounding, Scope Fidelity, Actionability, Consistency;
-0–2 each), may auto-revise internally for up to 2 cycles, and writes
-`<feature_name>/TestPlanReview.md` with scores and feedback. Full criteria live in `test-plan.review`.
+After the gaps flow, invoke **`test-plan.review`** for the feature directory. It applies the 10-point
+rubric (Specificity, Grounding, Scope Fidelity, Actionability, Consistency; 0–2 each), may auto-revise
+for up to 2 cycles, and writes scored feedback to `<feature_name>/TestPlanReview.md`. See the skill for
+full criteria.
 
 **Refresh TestPlanGaps.md** after the review returns (the revision loop may have resolved blocking
 gaps or introduced new advisories). Recompute `actionability_result` from the final `TestPlan.md`

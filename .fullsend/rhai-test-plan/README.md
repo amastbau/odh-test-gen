@@ -33,3 +33,5 @@ different repositories.
 This is a comparison harness. The Jira profile denies writes. The caller must
 keep host Jira, Pulse, GitLab, and GitHub publication disabled. Production
 switching requires evidence from real Fullsend runs and human review.
+
+Generated with Codex.

@@ -17,3 +17,7 @@ native validation hook. Provision it with the runner; the hook does not install
 packages. No producer pre hook is configured: both existing skills run the
 plugin bootstrap and dependency setup in their own preflight steps, and a host
 pre hook must not execute scripts from the target workspace.
+
+The descriptor pins a Fullsend sandbox image candidate expected to provide
+Tirith for Fullsend's default security hook. Compatibility with the current
+Fullsend runtime still needs manual verification.

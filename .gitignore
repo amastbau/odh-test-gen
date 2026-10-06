@@ -21,6 +21,7 @@ coverage.html
 *.env
 .env.*
 !.env.example
+!.fullsend/test-plan/gcp-vertex.env
 *.secret
 credentials.json
 token.json

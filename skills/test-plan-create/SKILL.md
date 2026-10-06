@@ -3,7 +3,7 @@ name: test-plan-create
 description: Generate a test plan from a strategy (RHAISTRAT or RHOAIENG issue), with optional ADR for extra technical depth. Use when starting test planning for a new RHOAI feature with a defined Jira strategy.
 argument-hint: <JIRA_KEY> [ADR_FILE_PATH]
 user-invocable: true
-model: opus
+model: claude-opus-4-6
 allowedTools:
   - Read
   - Write

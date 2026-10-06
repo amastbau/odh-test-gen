@@ -19,6 +19,7 @@ coverage.html
 *.p12
 *.jks
 *.env
+!.fullsend/rhai-test-plan/gcp-vertex.env
 .env.*
 !.env.example
 *.secret

@@ -5,8 +5,25 @@ import json
 from pathlib import Path
 
 import pytest
+import yaml
 
 from scripts.fullsend_harness import HarnessError, copy_back, prepare_plugin, validate_result
+
+
+def test_harness_local_resources_are_present():
+    root = Path(__file__).resolve().parents[2] / ".fullsend"
+    harness = yaml.safe_load((root / "rhai-test-plan" / "rhai-test-plan.yaml").read_text())
+    resources = [
+        harness["agent"],
+        harness["pre_script"],
+        harness["post_script"],
+        harness["validation_loop"]["script"],
+        harness["validation_loop"]["schema"],
+        harness["host_files"][0]["src"],
+        harness["openshell"]["profiles"][0],
+        harness["providers"][0],
+    ]
+    assert all((root / path).is_file() for path in resources)
 
 
 def _manifest(feature):

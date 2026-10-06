@@ -23,8 +23,12 @@ from scripts.utils.schemas import validate as validate_frontmatter
 KEY_PATTERN = re.compile(r"^(?:RHAISTRAT|RHOAIENG)-[0-9]+$")
 TASKS = {"create", "create-cases"}
 REQUIRED_PLAN_FILES = (
-    "TestPlan.md", "TestPlanGaps.md", "TestPlanReview.md", "README.md",
-    ".source-strategy.md", ".test-plan-output-dir.json",
+    "TestPlan.md",
+    "TestPlanGaps.md",
+    "TestPlanReview.md",
+    "README.md",
+    ".source-strategy.md",
+    ".test-plan-output-dir.json",
 )
 
 
@@ -139,14 +143,15 @@ def validate_result(result_file: Path, repo_dir: Path, task: str, key: str, run_
         raise HarnessError("output directory marker is invalid")
     marker_path = PurePosixPath(marker["output_dir"])
     run_parts = _relative_path(run_dir).parts
-    if not marker_path.is_absolute() or marker_path.parts[-len(run_parts):] != run_parts:
+    if not marker_path.is_absolute() or marker_path.parts[-len(run_parts) :] != run_parts:
         raise HarnessError("output directory marker names a different run")
     manifest = result.get("manifest")
     if not isinstance(manifest, dict):
         raise HarnessError("agent result is missing the artifact manifest")
     actual = {
         str(path.relative_to(feature)): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in feature.rglob("*") if path.is_file()
+        for path in feature.rglob("*")
+        if path.is_file()
     }
     if manifest != actual:
         raise HarnessError("artifact manifest does not match returned files")
@@ -193,12 +198,18 @@ def emit_result(output_file: Path, repo_dir: Path, task: str, key: str, run_dir:
     review = _frontmatter(feature / "TestPlanReview.md")
     manifest = {
         str(path.relative_to(feature)): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in feature.rglob("*") if path.is_file()
+        for path in feature.rglob("*")
+        if path.is_file()
     }
     receipt = {
-        "action": "completed", "task": task, "source_key": key,
-        "feature_dir": str(relative), "verdict": review.get("verdict"),
-        "score": review.get("score"), "manifest": manifest, "errors": [],
+        "action": "completed",
+        "task": task,
+        "source_key": key,
+        "feature_dir": str(relative),
+        "verdict": review.get("verdict"),
+        "score": review.get("score"),
+        "manifest": manifest,
+        "errors": [],
     }
     output_file.parent.mkdir(parents=True, exist_ok=True)
     output_file.write_text(json.dumps(receipt, indent=2) + "\n", encoding="utf-8")

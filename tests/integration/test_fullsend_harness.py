@@ -12,7 +12,8 @@ from scripts.fullsend_harness import HarnessError, copy_back, prepare_plugin, va
 def _manifest(feature):
     return {
         str(path.relative_to(feature)): hashlib.sha256(path.read_bytes()).hexdigest()
-        for path in feature.rglob("*") if path.is_file()
+        for path in feature.rglob("*")
+        if path.is_file()
     }
 
 
@@ -49,11 +50,20 @@ def _create_result(tmp_path, task="create", score=8, verdict="Ready"):
             "last_updated: 2026-10-06\n---\ncase\n"
         )
     result = tmp_path / "agent-result.json"
-    result.write_text(json.dumps({
-        "action": "completed", "task": task, "source_key": "RHAISTRAT-123",
-        "feature_dir": "test-plans/RHAISTRAT/run/feature", "verdict": verdict,
-        "score": score, "errors": [], "manifest": _manifest(feature),
-    }))
+    result.write_text(
+        json.dumps(
+            {
+                "action": "completed",
+                "task": task,
+                "source_key": "RHAISTRAT-123",
+                "feature_dir": "test-plans/RHAISTRAT/run/feature",
+                "verdict": verdict,
+                "score": score,
+                "errors": [],
+                "manifest": _manifest(feature),
+            }
+        )
+    )
     return repo, feature, result
 
 
@@ -82,10 +92,19 @@ def test_result_rejects_escape_or_wrong_run(tmp_path, bad_path):
     repo = tmp_path / "iteration"
     repo.mkdir()
     result = tmp_path / "agent-result.json"
-    result.write_text(json.dumps({
-        "action": "completed", "task": "create", "source_key": "RHAISTRAT-123",
-        "feature_dir": bad_path, "verdict": "Ready", "score": 8, "errors": [],
-    }))
+    result.write_text(
+        json.dumps(
+            {
+                "action": "completed",
+                "task": "create",
+                "source_key": "RHAISTRAT-123",
+                "feature_dir": bad_path,
+                "verdict": "Ready",
+                "score": 8,
+                "errors": [],
+            }
+        )
+    )
 
     with pytest.raises(HarnessError):
         validate_result(result, repo, "create", "RHAISTRAT-123", "test-plans/RHAISTRAT/run")
@@ -97,11 +116,19 @@ def test_result_rejects_symlinked_artifact(tmp_path):
     feature.mkdir(parents=True)
     (feature / "TestPlan.md").symlink_to(tmp_path / "outside")
     result = tmp_path / "agent-result.json"
-    result.write_text(json.dumps({
-        "action": "completed", "task": "create", "source_key": "RHAISTRAT-123",
-        "feature_dir": "test-plans/RHAISTRAT/run/feature", "verdict": "Ready", "score": 8,
-        "errors": [],
-    }))
+    result.write_text(
+        json.dumps(
+            {
+                "action": "completed",
+                "task": "create",
+                "source_key": "RHAISTRAT-123",
+                "feature_dir": "test-plans/RHAISTRAT/run/feature",
+                "verdict": "Ready",
+                "score": 8,
+                "errors": [],
+            }
+        )
+    )
 
     with pytest.raises(HarnessError):
         validate_result(result, repo, "create", "RHAISTRAT-123", "test-plans/RHAISTRAT/run")

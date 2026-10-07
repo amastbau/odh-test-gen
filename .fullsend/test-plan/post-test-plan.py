@@ -36,6 +36,18 @@ def write_atomic(path, source):
     if path.exists() or path.is_symlink():
         if not stat.S_ISREG(path.lstat().st_mode):
             raise ValueError(f"refusing to replace non-file: {path}")
+        source_position = source.tell()
+        try:
+            with open_regular(path) as existing:
+                while True:
+                    source_chunk = source.read(64 * 1024)
+                    existing_chunk = existing.read(64 * 1024)
+                    if source_chunk != existing_chunk:
+                        break
+                    if not source_chunk:
+                        return
+        finally:
+            source.seek(source_position)
     fd, temp = tempfile.mkstemp(prefix=".test-plan-", dir=path.parent)
     try:
         with os.fdopen(fd, "wb") as output:

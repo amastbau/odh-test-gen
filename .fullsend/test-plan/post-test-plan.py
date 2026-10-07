@@ -79,7 +79,14 @@ source_dir = child_dir(repo, parts)
 required = ["TestPlanReview.md", ".source-strategy.md"]
 if not no_acceptance_criteria:
     required.extend(("TestPlan.md", "README.md"))
-optional = ("TestPlan.md", "README.md", "TestPlanGaps.md")
+optional = (
+    "TestPlan.md",
+    "README.md",
+    "TestPlanGaps.md",
+    ".analysis-endpoints.md",
+    ".analysis-risks.md",
+    ".analysis-infra.md",
+)
 for name in required:
     with open_regular(source_dir / name):
         pass

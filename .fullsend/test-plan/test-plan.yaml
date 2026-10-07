@@ -3,6 +3,7 @@ agent: test-plan/prompt.md
 role: test-plan
 model: claude-opus-4-6
 image: ghcr.io/fullsend-ai/fullsend-sandbox@sha256:259605fea321353552fdefd3a6a55e8b5c260998dfc5a622ed143e41a429995a
+timeout_minutes: 90
 
 host_files:
   - src: test-plan/gcp-vertex.env

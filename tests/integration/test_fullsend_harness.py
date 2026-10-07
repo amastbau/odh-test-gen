@@ -23,8 +23,23 @@ def test_harness_local_resources_are_present():
         harness["openshell"]["profiles"][0],
         harness["openshell"]["profiles"][1],
         harness["providers"][0],
+        harness["providers"][1],
     ]
     assert all((root / path).is_file() for path in resources)
+
+
+def test_python_package_profile_is_attached_to_sandbox():
+    root = Path(__file__).resolve().parents[2] / ".fullsend"
+    harness = yaml.safe_load((root / "rhai-test-plan" / "rhai-test-plan.yaml").read_text())
+    provider = yaml.safe_load((root / harness["providers"][1]).read_text())
+    profile = yaml.safe_load((root / harness["openshell"]["profiles"][1]).read_text())
+
+    assert provider["type"] == profile["id"]
+    assert {endpoint["host"] for endpoint in profile["endpoints"]} == {
+        "pypi.org",
+        "files.pythonhosted.org",
+    }
+    assert {binary["path"] for binary in profile["binaries"]} == {"**/uv"}
 
 
 def test_claude_agent_name_matches_fullsend_registration():

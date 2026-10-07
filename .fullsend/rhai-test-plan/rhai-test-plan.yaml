@@ -48,4 +48,5 @@ openshell:
     - https://raw.githubusercontent.com/fullsend-ai/agents/11dd3ad15ab5033fd04661d7faf6f7af45548d2f/profiles/fullsend-vertex-ai.yaml#sha256=71ea4699ec497d4b9592220adf7588019eb8445dbc77af8e0e6767e68dcb5585
 providers:
   - rhai-test-plan/jira-provider.yaml
+  - rhai-test-plan/python-packages-provider.yaml
   - https://raw.githubusercontent.com/fullsend-ai/agents/11dd3ad15ab5033fd04661d7faf6f7af45548d2f/providers/vertex-ai.yaml#sha256=ae5ebe527e5d7b0fa6994346fde3f6ba11b632a3ba78ece96591b5ed85083ec1

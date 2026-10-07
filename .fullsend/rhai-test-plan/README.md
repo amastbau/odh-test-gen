@@ -30,8 +30,9 @@ Jira provider, and validation-loop pattern. The test planner adds a bundled
 plugin and two explicit task invocations because its skills and data live in
 different repositories.
 
-The Python package profile allows only `uv` to read from the package index
-hosts required by `uv sync --extra dev`. The plugin uses its committed lockfile.
+The Python package provider attaches a profile that allows only `uv` to read
+from the package index hosts required by `uv sync --extra dev`. The plugin uses
+its committed lockfile.
 
 This is a comparison harness. The Jira profile denies writes. The caller must
 keep host Jira, Pulse, GitLab, and GitHub publication disabled. Production

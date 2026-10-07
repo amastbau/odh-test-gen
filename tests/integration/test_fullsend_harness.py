@@ -21,6 +21,7 @@ def test_harness_local_resources_are_present():
         harness["validation_loop"]["schema"],
         harness["host_files"][0]["src"],
         harness["openshell"]["profiles"][0],
+        harness["openshell"]["profiles"][1],
         harness["providers"][0],
     ]
     assert all((root / path).is_file() for path in resources)

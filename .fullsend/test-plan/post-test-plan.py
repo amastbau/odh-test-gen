@@ -24,6 +24,16 @@ def child_dir(root, parts, create=False):
     return path
 
 
+def target_workspace_path(path):
+    candidate = Path(path)
+    if candidate.is_absolute():
+        return candidate
+    invocation_pwd = os.environ.get("PWD")
+    if not invocation_pwd or not Path(invocation_pwd).is_absolute():
+        raise ValueError("relative TARGET_REPO_DIR requires an absolute invocation PWD")
+    return Path(invocation_pwd) / candidate
+
+
 def open_regular(path):
     fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW)
     if not stat.S_ISREG(os.fstat(fd).st_mode):
@@ -70,7 +80,7 @@ if task not in ("/test-plan-create", "/test-plan-create-cases"):
 
 result_file = Path(validated_iteration) / "agent-result.json"
 repo_arg = Path(repo_dir)
-target_arg = Path(target_dir)
+target_arg = target_workspace_path(target_dir)
 with open_regular(result_file) as stream:
     result = json.load(stream)
 feature = result["feature_dir"]
@@ -100,8 +110,9 @@ optional = (
     ".analysis-infra.md",
 )
 for name in required:
-    with open_regular(source_dir / name):
-        pass
+    with open_regular(source_dir / name) as stream:
+        if os.fstat(stream.fileno()).st_size == 0:
+            raise ValueError(f"required file is empty: {name}")
 if (source_dir / "TestPlan.md").exists() != (source_dir / "README.md").exists():
     raise ValueError("plan and README must be present together")
 with open_regular(source_dir / ".test-plan-output-dir.json") as stream:
@@ -119,8 +130,9 @@ if source_cases.exists() or source_cases.is_symlink():
         if path.name == "INDEX.md" or (path.name.startswith("TC-") and path.suffix == ".md")
     ]
     for path in files:
-        with open_regular(path):
-            pass
+        with open_regular(path) as stream:
+            if task == "/test-plan-create-cases" and path.name == "INDEX.md" and os.fstat(stream.fileno()).st_size == 0:
+                raise ValueError("required file is empty: test_cases/INDEX.md")
 if task == "/test-plan-create-cases" and not any(path.name == "INDEX.md" for path in files):
     raise ValueError("case generation requires test_cases/INDEX.md")
 

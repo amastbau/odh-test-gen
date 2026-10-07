@@ -17,6 +17,7 @@ env:
     FULLSEND_TASK: "${FULLSEND_TASK}"
     JIRA_URL: "${JIRA_URL}"
     JIRA_USER: "${JIRA_USER}"
+    CLAUDE_NON_INTERACTIVE: "true"
   runner:
     FULLSEND_TASK: "${FULLSEND_TASK}"
     JIRA_URL: ${JIRA_URL}
@@ -31,6 +32,7 @@ providers:
   - test-plan/jira-provider.yaml
   - https://raw.githubusercontent.com/fullsend-ai/agents/11dd3ad15ab5033fd04661d7faf6f7af45548d2f/providers/vertex-ai.yaml#sha256=ae5ebe527e5d7b0fa6994346fde3f6ba11b632a3ba78ece96591b5ed85083ec1
 
+pre_script: test-plan/pre-test-plan.sh
 post_script: test-plan/post-test-plan.py
 
 validation_loop:

@@ -1,3 +1,8 @@
+---
+name: rhai-test-plan
+description: Generate and review one RHAI test plan task with the existing test-plan plugin.
+---
+
 # RHAI test planner
 
 You run exactly one task using the installed `test-plan` Claude plugin. Read

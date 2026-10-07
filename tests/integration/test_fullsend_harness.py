@@ -26,6 +26,16 @@ def test_harness_local_resources_are_present():
     assert all((root / path).is_file() for path in resources)
 
 
+def test_claude_agent_name_matches_fullsend_registration():
+    root = Path(__file__).resolve().parents[2] / ".fullsend"
+    harness = yaml.safe_load((root / "rhai-test-plan" / "rhai-test-plan.yaml").read_text())
+    prompt = (root / harness["agent"]).read_text()
+    assert prompt.startswith("---\n")
+    frontmatter = yaml.safe_load(prompt.split("---\n", 2)[1])
+    assert frontmatter["name"] == "rhai-test-plan"
+    assert frontmatter["description"]
+
+
 def _manifest(feature):
     return {
         str(path.relative_to(feature)): hashlib.sha256(path.read_bytes()).hexdigest()

@@ -7,7 +7,7 @@ from pathlib import Path
 import pytest
 import yaml
 
-from scripts.fullsend_harness import HarnessError, copy_back, prepare_plugin, validate_result
+from scripts.fullsend_harness import HarnessError, copy_back, emit_result, prepare_plugin, validate_result
 
 
 def test_harness_local_resources_are_present():
@@ -98,7 +98,7 @@ def _create_result(tmp_path, task="create", score=8, verdict="Ready"):
             {
                 "action": "completed",
                 "task": task,
-                "source_key": "RHAISTRAT-123",
+                "strategy_issue": "RHAISTRAT-123",
                 "feature_dir": "test-plans/RHAISTRAT/run/feature",
                 "verdict": verdict,
                 "score": score,
@@ -130,6 +130,33 @@ def test_completed_create_requires_artifacts_inside_requested_run(tmp_path):
     assert validate_result(result, repo, "create", "RHAISTRAT-123", "test-plans/RHAISTRAT/run") == feature
 
 
+def test_emit_result_uses_noncredential_receipt_field(tmp_path):
+    repo, feature, result = _create_result(tmp_path)
+    result.unlink()
+
+    emit_result(result, repo, "create", "RHAISTRAT-123", "test-plans/RHAISTRAT/run", str(feature.relative_to(repo)))
+
+    receipt = json.loads(result.read_text())
+    assert receipt["strategy_issue"] == "RHAISTRAT-123"
+    assert "source_key" not in receipt
+    schema = json.loads(
+        (Path(__file__).resolve().parents[2] / ".fullsend/rhai-test-plan/result.schema.json").read_text()
+    )
+    assert "strategy_issue" in schema["required"]
+    assert "source_key" not in schema["properties"]
+    assert validate_result(result, repo, "create", "RHAISTRAT-123", "test-plans/RHAISTRAT/run") == feature
+
+
+def test_result_rejects_receipt_with_redacted_strategy_issue(tmp_path):
+    repo, _, result = _create_result(tmp_path)
+    receipt = json.loads(result.read_text())
+    receipt["strategy_issue"] = "RHAI..."
+    result.write_text(json.dumps(receipt))
+
+    with pytest.raises(HarnessError, match="wrong task or strategy"):
+        validate_result(result, repo, "create", "RHAISTRAT-123", "test-plans/RHAISTRAT/run")
+
+
 @pytest.mark.parametrize("bad_path", ["../outside", "/tmp/outside", "test-plans/RHAISTRAT/other/feature"])
 def test_result_rejects_escape_or_wrong_run(tmp_path, bad_path):
     repo = tmp_path / "iteration"
@@ -140,7 +167,7 @@ def test_result_rejects_escape_or_wrong_run(tmp_path, bad_path):
             {
                 "action": "completed",
                 "task": "create",
-                "source_key": "RHAISTRAT-123",
+                "strategy_issue": "RHAISTRAT-123",
                 "feature_dir": bad_path,
                 "verdict": "Ready",
                 "score": 8,
@@ -164,7 +191,7 @@ def test_result_rejects_symlinked_artifact(tmp_path):
             {
                 "action": "completed",
                 "task": "create",
-                "source_key": "RHAISTRAT-123",
+                "strategy_issue": "RHAISTRAT-123",
                 "feature_dir": "test-plans/RHAISTRAT/run/feature",
                 "verdict": "Ready",
                 "score": 8,

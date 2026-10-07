@@ -112,7 +112,7 @@ def validate_result(result_file: Path, repo_dir: Path, task: str, key: str, run_
         raise HarnessError("agent result is missing or invalid JSON") from exc
     if not isinstance(result, dict) or result.get("action") != "completed":
         raise HarnessError("agent did not report completion")
-    if result.get("task") != task or result.get("source_key") != key:
+    if result.get("task") != task or result.get("strategy_issue") != key:
         raise HarnessError("agent result identifies the wrong task or strategy")
     if result.get("errors") != []:
         raise HarnessError("agent result contains errors")
@@ -204,7 +204,7 @@ def emit_result(output_file: Path, repo_dir: Path, task: str, key: str, run_dir:
     receipt = {
         "action": "completed",
         "task": task,
-        "source_key": key,
+        "strategy_issue": key,
         "feature_dir": str(relative),
         "verdict": review.get("verdict"),
         "score": review.get("score"),

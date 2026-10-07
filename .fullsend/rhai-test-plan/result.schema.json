@@ -3,11 +3,11 @@
   "title": "RHAI test planner result",
   "type": "object",
   "additionalProperties": false,
-  "required": ["action", "task", "source_key", "feature_dir", "verdict", "score", "manifest", "errors"],
+  "required": ["action", "task", "strategy_issue", "feature_dir", "verdict", "score", "manifest", "errors"],
   "properties": {
     "action": {"const": "completed"},
     "task": {"enum": ["create", "create-cases"]},
-    "source_key": {"type": "string", "pattern": "^(RHAISTRAT|RHOAIENG)-[0-9]+$"},
+    "strategy_issue": {"type": "string", "pattern": "^(RHAISTRAT|RHOAIENG)-[0-9]+$"},
     "feature_dir": {"type": "string", "minLength": 1},
     "verdict": {"enum": ["Ready", "Revise", "Rework"]},
     "score": {"type": "integer", "minimum": 0, "maximum": 10},

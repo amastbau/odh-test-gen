@@ -34,6 +34,11 @@ The Python package provider attaches a profile that allows only `uv` to read
 from the package index hosts required by `uv sync --extra dev`. The plugin uses
 its committed lockfile.
 
+The result receipt uses `strategy_issue` for the Jira key. Fullsend sanitizes
+JSON fields named `source_key` as credential-like data before the host post
+script reads them; the renamed field remains schema-validated and checked
+against the host's requested strategy.
+
 This is a comparison harness. The Jira profile denies writes. The caller must
 keep host Jira, Pulse, GitLab, and GitHub publication disabled. Production
 switching requires evidence from real Fullsend runs and human review.

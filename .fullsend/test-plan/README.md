@@ -1,9 +1,9 @@
 # Run the test-plan producer
 
-This comparison branch runs with `FULLSEND_DRY_RUN=true` inside the sandbox.
-It skips Jira label stamping and enforces read-only Jira access, while still
-fetching the strategy and producing local plan artifacts. Do not pass a
-`--dry-run` flag to `fullsend run`; the harness applies this mode automatically.
+The normal `test-plan` agent keeps Jira label stamping. For a comparison run,
+choose `test-plan-dry-run`: it sets `FULLSEND_DRY_RUN=true` inside the sandbox,
+skips label stamping, and overrides the Jira profile with enforced read-only
+access. There is no `--dry-run` flag on `fullsend run`; select the agent name.
 
 ## Prerequisites
 
@@ -19,11 +19,12 @@ From the producer checkout, set the strategy key and run Fullsend with the check
 ```bash
 RUN_OUTPUT=$(mktemp -d /tmp/fullsend-test-plan.XXXXXX)
 export FULLSEND_TASK='/test-plan-create RHAISTRAT-XXX --output-dir plans'
-fullsend run test-plan --fullsend-dir .fullsend --target-repo . --output-dir "$RUN_OUTPUT"
+fullsend run test-plan-dry-run --fullsend-dir .fullsend --target-repo . --output-dir "$RUN_OUTPUT"
 ```
 
 Replace `RHAISTRAT-XXX` with the strategy issue. If credentials are stored in an env file, add
 `--env-file .env`; add `--keep-sandbox` when you need to inspect a failed run.
+Use `fullsend run test-plan` for the normal flow that stamps Jira labels.
 
 ## Generate cases for an eligible plan
 
@@ -32,7 +33,7 @@ Before continuing, inspect `plans/<feature>/TestPlanReview.md` and proceed only 
 
 ```bash
 export FULLSEND_TASK='/test-plan-create-cases plans/example_feature'
-fullsend run test-plan --fullsend-dir .fullsend --target-repo . --output-dir "$RUN_OUTPUT"
+fullsend run test-plan-dry-run --fullsend-dir .fullsend --target-repo . --output-dir "$RUN_OUTPUT"
 ```
 
 Plans and reviews are written under `plans/<feature>/`; generated cases are written to that feature's

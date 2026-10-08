@@ -8,7 +8,7 @@ endpoints:
     port: 443
     protocol: rest
     enforcement: enforce
-    access: read-write
+    access: read-only
 binaries:
   - path: "**/python"
   - path: "**/python*"

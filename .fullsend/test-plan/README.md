@@ -1,5 +1,10 @@
 # Run the test-plan producer
 
+This comparison branch runs with `FULLSEND_DRY_RUN=true` inside the sandbox.
+It skips Jira label stamping and enforces read-only Jira access, while still
+fetching the strategy and producing local plan artifacts. Do not pass a
+`--dry-run` flag to `fullsend run`; the harness applies this mode automatically.
+
 ## Prerequisites
 
 - Run from an `odh-test-gen` checkout with the Fullsend CLI and OpenShell configured.

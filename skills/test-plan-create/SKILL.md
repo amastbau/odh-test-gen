@@ -377,6 +377,8 @@ also invokes `/test-plan-create-cases` with the feature directory after Step 4.
 
 ### Step 3.6: Stamp Jira label — test plan created
 
+When `FULLSEND_DRY_RUN=true`, skip this step. Continue to Step 4 without changing Jira.
+
 Add `test-plan-auto-created` to the source Jira issue to mark the generated plan for org-pulse tracking.
 
 Read `source_key` from `<feature_name>/TestPlan.md` frontmatter before stamping:
@@ -439,6 +441,8 @@ actionability_result=$(printf '%s\n' "$citation_inputs" | jq -c '.actionability_
    blocking grounding or operational gap; advisory actionability gaps alone do not require them.
 
 ### Step 4.5: Stamp rubric verdict label
+
+When `FULLSEND_DRY_RUN=true`, skip this step. Keep the review artifact and verdict locally.
 
 From the test-plan repo, use `frontmatter.py read` with absolute paths to get `verdict` and
 `auto_revised` from `TestPlanReview.md` and `source_key` from `TestPlan.md`; do not parse YAML by

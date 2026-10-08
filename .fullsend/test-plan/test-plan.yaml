@@ -15,6 +15,7 @@ host_files:
 env:
   sandbox:
     FULLSEND_TASK: "${FULLSEND_TASK}"
+    FULLSEND_DRY_RUN: "true"
     JIRA_URL: "${JIRA_URL}"
     JIRA_USER: "${JIRA_USER}"
     CLAUDE_NON_INTERACTIVE: "true"

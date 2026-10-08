@@ -27,6 +27,18 @@ class TestRubricLabelForVerdict:
 class TestMain:
     """Tests for main() argument handling and label assembly."""
 
+    @patch("scripts.add_jira_labels.add_labels")
+    def test_fullsend_dry_run_skips_jira_write(self, mock_add_labels, monkeypatch, capsys):
+        monkeypatch.setenv("FULLSEND_DRY_RUN", "true")
+        monkeypatch.setattr(
+            "sys.argv",
+            ["add_jira_labels.py", "RHAISTRAT-400", "--verdict", "Ready", "test-plan-auto-revised"],
+        )
+
+        assert main() == 0
+        mock_add_labels.assert_not_called()
+        assert json.loads(capsys.readouterr().out) == {"status": "skipped", "reason": "dry_run"}
+
     @pytest.mark.parametrize(
         "extra_argv,expected_exit,expected_labels,expected_remove,expected_stderr",
         [

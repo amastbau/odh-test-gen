@@ -1,5 +1,6 @@
 ---
 base: test-plan.yaml
+agent: test-plan/prompt-dry-run.md
 
 env:
   sandbox:

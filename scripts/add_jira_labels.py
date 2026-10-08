@@ -16,6 +16,7 @@ Environment variables:
     JIRA_URL   - Jira server URL (required)
     JIRA_USER  - Jira username/email (required)
     JIRA_TOKEN - Jira API token (required)
+    FULLSEND_DRY_RUN - When "true", validate the request but skip the Jira write
 
 Exit codes:
     0 - Success
@@ -24,6 +25,7 @@ Exit codes:
 
 import argparse
 import json
+import os
 import sys
 
 from scripts.jira_utils import add_labels
@@ -104,6 +106,10 @@ Examples:
             print("Error: No labels to add (no --verdict match and no literal labels given)", file=sys.stderr)
             print(json.dumps({"status": "error", "error": "no_labels_to_add"}))
             return 1
+
+    if os.environ.get("FULLSEND_DRY_RUN") == "true":
+        print(json.dumps({"status": "skipped", "reason": "dry_run"}))
+        return 0
 
     try:
         add_labels(args.issue_key, labels, remove=stale_rubric_labels)

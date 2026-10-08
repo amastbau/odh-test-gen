@@ -1,0 +1,11 @@
+---
+base: test-plan.yaml
+agent: test-plan/prompt-dry-run.md
+
+env:
+  sandbox:
+    FULLSEND_DRY_RUN: "true"
+
+openshell:
+  profiles:
+    - test-plan/jira-read-only-profile.yaml
